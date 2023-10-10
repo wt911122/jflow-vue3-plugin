@@ -1,4 +1,4 @@
-import { inject, watch, onMounted, onUpdated, onUnmounted, toRaw } from 'vue';
+import { inject, watch, onMounted, onUpdated, onUnmounted, toRaw, ref, h } from 'vue';
 import useStack from './useStack';
 import { bindEvent } from './event-utils'
 
@@ -23,32 +23,38 @@ export default function (builder) {
                 type: Function,
             }
         },
-        data() {
-            return {
-                renderLinks: [],
-            }
-        },
-        setup(props, { attrs }) {
+        setup(props, { attrs, slots, expose }) {
             const addToBelongStack = inject('addToStack');
             const removeFromBelongStack = inject('removeFromStack');
+            const renderJFlow = inject('renderJFlow');
             const _jflowInstance =  new builder(props.configs);
             useStack(_jflowInstance);
             bindEvent(_jflowInstance, attrs);
             addToBelongStack(_jflowInstance, toRaw(props.source));
-
+            const renderLinks = ref([]);
             const genLinks = () => {
-                this.renderLinks = _jflowInstance._layout.flowLinkStack.slice();
+                renderLinks.value = _jflowInstance._layout.flowLinkStack.slice();
             }
-
             genLinks();
-            const stop1 = watch(() => props.visible, (val) => {
+            const setVisible = (val) => {
                 _jflowInstance.visible = val;
+                renderJFlow();
+            }
+            const stop0 = watch(() => props.configs, (val, oldVal) => {
+                if(JSON.stringify(val) === JSON.stringify(oldVal)){
+                    return;
+                }
+                _jflowInstance.setConfig(val);
+                renderJFlow();
             });
+            const stop1 = watch(() => props.visible, setVisible)
 
             const stop2 = watch(() => props.source, (val) => {
-                _jflowInstance._jflow.setRenderNodeBySource(val, _jflowInstance);
+                _jflowInstance._jflow.setRenderNodeBySource(toRaw(val), _jflowInstance);
             });
 
+            setVisible(props.visible)
+            
             onMounted(() => {
                 _jflowInstance.recalculate()
             });
@@ -56,32 +62,45 @@ export default function (builder) {
                 _jflowInstance.recalculateUp()
             });
             onUnmounted(() => {
+                stop0();
                 stop1();
                 stop2();
                 _jflowInstance.destroy();
                 removeFromBelongStack(_jflowInstance);
             });
-
-           
-        },
-        methods: {
-            genLinkVueComponentKey(meta) {
-                const k1 = this.genVueComponentKey(meta.from.source);
-                const k2 = this.genVueComponentKey(meta.to.source);
+            const getLinkName = (link) => {
+                const type = link.type
+                if(!slots[type]) {
+                    return 'plainlink'
+                }
+                return type;
+            }
+            const genLinkVueComponentKey = (meta) => {
+                const k1 = props.genVueComponentKey(meta.from.source);
+                const k2 = props.genVueComponentKey(meta.to.source);
                 const k3 = meta.part;
                 return `${k1}-${k2}-${k3}`
-            },
-            
-        },
-        template: `
-            <jflow-group>
-                <slot></slot>
-                <template v-for="link in renderLinks" :key="genLinkVueComponentKey(link)">
-                    <slot :name="link.type || 'plainlink'" 
-                        :configs="link">
-                    </slot>
-                </template>
-            </jflow-group>
-        ` 
+            }
+
+            expose({
+                genLinks,
+                _jflowInstance,
+            });
+
+            return () => h('jflow-group', [
+                ...slots.default(),
+                ...renderLinks.value.map(meta => {
+                    const type = getLinkName(meta);
+                    if(!slots[type]) {
+                        return null;
+                    }
+                    const vnode = slots[type]({ 
+                        configs: meta 
+                    });
+                    vnode.key = genLinkVueComponentKey(meta);
+                    return vnode;
+                })
+            ])
+        }
     }
 }

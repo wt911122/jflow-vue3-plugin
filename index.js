@@ -1,8 +1,8 @@
-import JFlowComponent from './components/JFlow.vue';
+import JFlowComponent from './components/JFlow.js';
 import JFlowInstance from './components/JFlowInstance';
 import JFlowLink from './components/JFlowLink';
 import JFlowGroup from './components/JFlowGroup';
-import JFlowTextGroup from './components/JFlowTextGroup.vue';
+import JFlowTextGroup from './components/JFlowTextGroup';
 
 const JFLOW_NODES = [
     'Point',

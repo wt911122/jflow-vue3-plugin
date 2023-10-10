@@ -8,9 +8,15 @@ export function bindEvent(_jflowInstance, attrs) {
             // TODO 整理固定的 Event
             let func = attrs[key];
             if(Array.isArray(func)) {
-                func = func.find(f => Object.toString.call(f) === '[object Function]')
-            }
-            if(func) {
+                func = func.filter(f => typeof f === 'function')
+                const reg = /^on(.*)/.exec(key);
+                if(reg[1]) {
+                    const eventName = lowerFirstLetter(reg[1]);
+                    func.forEach(f => {
+                        _jflowInstance.addEventListener(eventName, f);
+                    });
+                }
+            } else if(func && typeof func === 'function') {
                 const reg = /^on(.*)/.exec(key);
                 if(reg[1]) {
                     _jflowInstance.addEventListener(lowerFirstLetter(reg[1]), func);

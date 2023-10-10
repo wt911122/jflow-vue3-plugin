@@ -1,9 +1,10 @@
-import { provide } from 'vue'
+import { provide, toRaw } from 'vue'
 export default function (_jflowInstance) {
     // const stack = ref([]);
     function addToStack(instance, source) {
         _jflowInstance.addToStack(instance);
         if(source) {
+            source = toRaw(source);
             instance._jflow.setRenderNodeBySource(source, instance)
         }
     }

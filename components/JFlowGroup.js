@@ -24,30 +24,34 @@ export default function (nameNode) {
                 type: Object,
             }
         },
-        setup(props, { slots, attrs }) {
+        setup(props, { slots, attrs, expose }) {
             const addToBelongStack = inject('addToStack');
             const removeFromBelongStack = inject('removeFromStack');
-            
-            const _jflowInstance =  new builder(props.configs);
+            const renderJFlow = inject('renderJFlow');
+            const _jflowInstance =  new builder(toRaw(props.configs));
             useStack(_jflowInstance);
             bindEvent(_jflowInstance, attrs);
             addToBelongStack(_jflowInstance, toRaw(props.source));
             
+            const setVisible = (val) => {
+                _jflowInstance.visible = val;
+                renderJFlow();
+            }
             const stop0 = watch(() => props.configs, (val, oldVal) => {
                 if(JSON.stringify(val) === JSON.stringify(oldVal)){
                     return;
                 }
                 _jflowInstance.setConfig(val);
+                renderJFlow();
             });
 
-            const stop1 = watch(() => props.visible, (val) => {
-                _jflowInstance.visible = val;
-            });
+            const stop1 = watch(() => props.visible, setVisible);
 
             const stop2 = watch(() => props.source, (val) => {
-                _jflowInstance._jflow.setRenderNodeBySource(val, _jflowInstance);
+                _jflowInstance._jflow.setRenderNodeBySource(toRaw(val), _jflowInstance);
             });
 
+            setVisible(props.visible)
 
             onMounted(() => {
                 _jflowInstance.recalculate()
@@ -62,6 +66,10 @@ export default function (nameNode) {
                 _jflowInstance.destroy();
                 removeFromBelongStack(_jflowInstance);
             })
+
+            expose({
+                _jflowInstance,
+            });
             
             return () => h('jflow-group', slots.default())
         }
